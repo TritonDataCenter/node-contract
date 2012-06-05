@@ -1,0 +1,14 @@
+{
+	"error_base": "0x33000",
+	"errors": [
+	{
+		"code": "BADARG",
+		"msg": "incorrect type for argument",
+		"exception": "TypeError"
+	},
+	{
+		"code": "MISSINGARG",
+		"msg": "missing argument",
+		"exception": "TypeError"
+	} ]
+}

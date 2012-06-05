@@ -1,0 +1,29 @@
+{
+	"author": "Keith M Wesolowski <keith.wesolowski@joyent.com>",
+	"name": "contract",
+	"description": "contract(4) bindings",
+	"version": "0.0.0",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/wesolows/node-contract.git"
+	},
+	"bugs": {
+		"url" : "http://github.com/wesolows/node-contract/issues"
+	},
+	"main": "lib/index.js",
+	"engines": {
+		"node": "~0.6.18"
+	},
+	"dependencies": {
+		"bunyan": "~0.7.1",
+		"dtrace-provider": "0.0",
+		"posix-getopt": "~0.0.1"
+	},
+	"devDependencies": {
+		"tap": "0.2"
+	},
+	"scripts": {
+		"pretest": "which gjslint; if [[ \"$?\" = 0 ]] ; then  gjslint --nojsdoc -r lib -r tst; else echo \"Missing gjslint. Skipping lint\"; fi",
+		"test": "./node_modules/.bin/tap ./tst"
+	}
+}

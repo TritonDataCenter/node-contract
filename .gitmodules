@@ -1,0 +1,12 @@
+[submodule "src/v8plus"]
+	path = src/v8plus
+	url = https://github.com/wesolows/v8plus
+[submodule "deps/javascriptlint"]
+	path = deps/javascriptlint
+	url = https://github.com/davepacheco/javascriptlint
+[submodule "deps/jsstyle"]
+	path = deps/jsstyle
+	url = https://github.com/davepacheco/jsstyle.git
+[submodule "deps/restdown"]
+	path = deps/restdown
+	url = https://github.com/trentm/restdown
