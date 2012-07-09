@@ -2,3 +2,4 @@ node_modules
 src/contracts.o
 src/event.o
 src/node_contract.o
+src/v8plus_errno.h

@@ -1,8 +1,16 @@
 #include <sys/ccompile.h>
+#include <sys/ctfs.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <libnvpair.h>
 #include <uv.h>
 #include <pthread.h>
+#include <strings.h>
+#include <errno.h>
+#include <unistd.h>
+#include <limits.h>
+#include <libcontract_priv.h>
 #include "node_contract.h"
 
 typedef enum nc_ack {
@@ -12,11 +20,12 @@ typedef enum nc_ack {
 } nc_ack_t;
 
 static contract_mgr_t mgr = {
-	cm_tmpl_fd: -1
+	cm_tmpl_fd: -1,
+	cm_last_type: NCT_NONE
 };
 
 static void
-node_contract_event_cb(uv_poll_t *upp, int status, int events)
+node_contract_event_cb(uv_poll_t *upp, int status __UNUSED, int events __UNUSED)
 {
 	int fd = (int)(uintptr_t)upp->data;
 
@@ -25,26 +34,59 @@ node_contract_event_cb(uv_poll_t *upp, int status, int events)
 	handle_events(fd);
 }
 
-static nvlist_t *
-node_contract_ctor(const nvlist_t *ap, void **cpp)
+static node_contract_t *
+node_contract_ctor_common(int cfd)
 {
 	node_contract_t *cp;
-	nvpair_t *pp;
+	ct_stathdl_t st;
+	int err;
 
-	if (nvlist_lookup_nvpair((nvlist_t *)ap, "0", &pp) == 0) {
-		if (nvlist_length(ap) > 1 ||
-		    v8plus_typeof(pp) != V8PLUS_TYPE_UNDEFINED) {
-			return (v8plus_error(V8PLUSERR_EXTRAARG, NULL));
-		}
+	if ((cp = malloc(sizeof (node_contract_t))) == NULL) {
+		(void) v8plus_error(V8PLUSERR_NOMEM, NULL);
+		return (NULL);
 	}
 
-	if ((cp = malloc(sizeof (node_contract_t))) == NULL)
-		return (v8plus_error(V8PLUSERR_NOMEM, NULL));
-
 	bzero(cp, sizeof (node_contract_t));
-	cp->nc_ctl_fd = -1;
+	cp->nc_ctl_fd = cfd;
 	cp->nc_ev_fd = -1;
 	cp->nc_self = pthread_self();
+
+	if ((err = ct_status_read(cfd, CTD_COMMON, &st)) != 0) {
+		free(cp);
+		(void) v8plus_syserr(err,
+		    "unable to obtain contract status: %s", strerror(err));
+		return (NULL);
+	}
+
+	cp->nc_id = ct_status_get_id(st);
+	ct_status_free(st);
+
+	return (cp);
+}
+
+static nvlist_t *
+node_contract_ctor_latest(void **cpp)
+{
+	node_contract_t *cp;
+	int cfd;
+
+	if (mgr.cm_last_type == NCT_PROCESS)
+		cfd = open64(CTFS_ROOT "/device/latest", O_RDWR);
+	else if (mgr.cm_last_type == NCT_DEVICE)
+		cfd = open64(CTFS_ROOT "/process/latest", O_RDWR);
+	else
+		return (v8plus_error(V8PLUSERR_NOTEMPLATE,
+		    "no contract template has been activated"));
+
+	if (cfd < 0) {
+		return (v8plus_syserr(errno,
+		    "unable to open latest contract: %s", strerror(errno)));
+	}
+
+	if ((cp = node_contract_ctor_common(cfd)) == NULL) {
+		(void) close(cfd);
+		return (NULL);
+	}
 
 	*cpp = cp;
 
@@ -52,7 +94,74 @@ node_contract_ctor(const nvlist_t *ap, void **cpp)
 }
 
 static nvlist_t *
-node_contract_activate(const nvlist_t *ap)
+node_contract_ctor_adopt(ctid_t ctid, void **cpp)
+{
+	node_contract_t *cp;
+	char buf[PATH_MAX];
+	int cfd;
+	int err;
+
+	(void) snprintf(buf, sizeof (buf), CTFS_ROOT "/all/%d", (int)ctid);
+	cfd = open64(buf, O_RDWR);
+
+	if (cfd < 0) {
+		return (v8plus_syserr(errno,
+		    "unable to open contract %d ctl handle: %s", (int)ctid,
+		    strerror(errno)));
+	}
+
+	if ((cp = node_contract_ctor_common(cfd)) == NULL) {
+		(void) close(cfd);
+		return (NULL);
+	}
+
+	if ((err = ct_ctl_adopt(cp->nc_ctl_fd)) != 0) {
+	}
+
+	*cpp = cp;
+
+	return (v8plus_void());
+}
+
+static nvlist_t *
+node_contract_ctor_observe(ctid_t ctid, void **cpp)
+{
+	return (NULL);
+}
+
+static nvlist_t *
+node_contract_ctor(const nvlist_t *ap, void **cpp)
+{
+	ctid_t ctid;
+	double d;
+	boolean_t b;
+
+	if (v8plus_args(ap, V8PLUS_ARG_F_NOEXTRA,
+	    V8PLUS_TYPE_NUMBER, &d,
+	    V8PLUS_TYPE_NONE) == 0) {
+		ctid = (ctid_t)d;
+		return (node_contract_ctor_observe(ctid, cpp));
+	}
+
+	if (v8plus_args(ap, V8PLUS_ARG_F_NOEXTRA,
+	    V8PLUS_TYPE_NUMBER, &d,
+	    V8PLUS_TYPE_BOOLEAN, &b,
+	    V8PLUS_TYPE_NONE) == 0) {
+		ctid = (ctid_t)d;
+		if (b)
+			return (node_contract_ctor_adopt(ctid, cpp));
+		return (node_contract_ctor_observe(ctid, cpp));
+	}
+
+	if (v8plus_args(ap, V8PLUS_ARG_F_NOEXTRA, V8PLUS_TYPE_NONE) == 0)
+		return (node_contract_ctor_latest(cpp));
+
+	return (v8plus_error(V8PLUSERR_BADARG,
+	    "constructor arguments do not match an acceptable template"));
+}
+
+static nvlist_t *
+node_contract_set_tmpl(const nvlist_t *ap)
 {
 	int flags;
 	int fd;
@@ -62,12 +171,12 @@ node_contract_activate(const nvlist_t *ap)
 
 	mgr.cm_tmpl_fd = open64(CTFS_ROOT "/process/template", O_RDWR);
 	if (mgr.cm_tmpl_fd < 0) {
-		return (v8plus_error(V8PLUSERR_SYS, "unable to open %s: %s",
+		return (v8plus_syserr(errno, "unable to open %s: %s",
 		    CTFS_ROOT "/process/template", strerror(errno)));
 	}
 
 	if ((flags = fcntl(mgr.cm_tmpl_fd, F_GETFD, 0)) < 0 ||
-	    fcntl(mgr.cm_tmpl_fd, F_SETFD, flags | FDCLOEXEC) < 0) {
+	    fcntl(mgr.cm_tmpl_fd, F_SETFD, flags | FD_CLOEXEC) < 0) {
 		err = errno;
 		(void) close(mgr.cm_tmpl_fd);
 		mgr.cm_tmpl_fd = -1;
@@ -81,7 +190,7 @@ node_contract_activate(const nvlist_t *ap)
 }
 
 static nvlist_t *
-node_contract_deactivate(const nvlist_t *ap)
+node_contract_clear_tmpl(const nvlist_t *ap __UNUSED)
 {
 	int err;
 
@@ -97,7 +206,26 @@ node_contract_deactivate(const nvlist_t *ap)
 }
 
 static nvlist_t *
-node_contract_abandon(void *op, const nvlist_t *ap)
+node_contract_create(const nvlist_t *ap __UNUSED)
+{
+	int err;
+	ctid_t ctid;
+
+	if (mgr.cm_tmpl_fd < 0) {
+		return (v8plus_error(V8PLUSERR_NOTEMPLATE,
+		    "no contract template is currently active"));
+	}
+
+	if ((err = ct_tmpl_create(mgr.cm_tmpl_fd, &ctid)) != 0) {
+		return (v8plus_syserr(err, "unable to create contract: %s",
+		    strerror(err)));
+	}
+
+	return (v8plus_void());
+}
+
+static nvlist_t *
+node_contract_abandon(void *op, const nvlist_t *ap __UNUSED)
 {
 	node_contract_t *cp = op;
 	int err;
@@ -112,8 +240,8 @@ node_contract_abandon(void *op, const nvlist_t *ap)
 		    strerror(err)));
 	}
 
-	if (cp->nc_ev_fd != 0) {
-		(void) uv_poll_stop(&nc_uv_poll);
+	if (cp->nc_ev_fd >= 0) {
+		(void) uv_poll_stop(&cp->nc_uv_poll);
 		(void) close(cp->nc_ev_fd);
 		cp->nc_ev_fd = -1;
 	}
@@ -129,7 +257,7 @@ node_contract_ack_common(void *op, const nvlist_t *ap, nc_ack_t ack)
 {
 	node_contract_t *cp = op;
 	nvpair_t *pp;
-	evid_t evid;
+	ctevid_t evid;
 	int err;
 
 	if (nvlist_lookup_nvpair((nvlist_t *)ap, "0", &pp) != 0)
@@ -138,7 +266,7 @@ node_contract_ack_common(void *op, const nvlist_t *ap, nc_ack_t ack)
 	if (v8plus_typeof(pp) == V8PLUS_TYPE_STRING) {
 		char *v;
 
-		if ((err = nvpair_string_value(pp, &v)) != 0)
+		if ((err = nvpair_value_string(pp, &v)) != 0)
 			return (v8plus_nverr(err, "0"));
 
 		errno = 0;
@@ -197,11 +325,17 @@ node_contract_qack(void *op, const nvlist_t *ap)
 	return (node_contract_ack_common(op, ap, NCA_QACK));
 }
 
+static nvlist_t *
+node_contract_status(void *op, const nvlist_t *ap)
+{
+	return (NULL);
+}
+
 /*
  * v8+ boilerplate
  */
 const v8plus_c_ctor_f v8plus_ctor = node_contract_ctor;
-const char *v8plus_js_factory_name = "_create";
+const char *v8plus_js_factory_name = "_new";
 const char *v8plus_js_class_name = "ContractBinding";
 const v8plus_method_descr_t v8plus_methods[] = {
 	{
@@ -219,6 +353,10 @@ const v8plus_method_descr_t v8plus_methods[] = {
 	{
 		md_name: "_qack",
 		md_c_func: node_contract_qack
+	},
+	{
+		md_name: "_status",
+		md_c_func: node_contract_status
 	}
 };
 const uint_t v8plus_method_count =
@@ -226,12 +364,16 @@ const uint_t v8plus_method_count =
 
 const v8plus_static_descr_t v8plus_static_methods[] = {
 	{
-		sd_name: "_activate",
-		sd_c_func: node_contract_activate
+		sd_name: "_set_template",
+		sd_c_func: node_contract_set_tmpl
 	},
 	{
-		sd_name: "_deactivate",
-		sd_c_func: node_contract_deactivate
+		sd_name: "_clear_template",
+		sd_c_func: node_contract_clear_tmpl
+	},
+	{
+		sd_name: "_create",
+		sd_c_func: node_contract_create
 	}
 };
 const uint_t v8plus_static_method_count =

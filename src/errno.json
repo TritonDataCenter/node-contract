@@ -10,5 +10,10 @@
 		"code": "MISSINGARG",
 		"msg": "missing argument",
 		"exception": "TypeError"
+	},
+	{
+		"code": "NOTEMPLATE",
+		"msg": "no contract template is active",
+		"exception": "Error"
 	} ]
 }

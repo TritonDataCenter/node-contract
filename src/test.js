@@ -1,17 +1,21 @@
-var contract = require('./contract');
-var util = require('util');
+var contract = require('contract.js');
+var child_process = require('child_process.js');
 
-var test = {
-	foo: 3,
-	bar: "true",
-	baz: true,
-	quux: "blargh string",
-	quuux: { inner: -1 },
-	mumble: [ 4, 5, 6 ]
+var ct;
+var child;
+var tmpl = {
+	type: 'process',
+	critical: [ 'CT_PR_EV_EMPTY', 'CT_PR_EV_HWERR' ],
+	informative: [ 'CT_PR_EV_EXIT', 'CT_PR_EV_CORE' ],
+	params: [ 'CT_PR_NOORPHAN' ]
 };
 
-var c = contract.create(17);
-c._activate(test);
-var result = c._deactivate();
-console.log(util.inspect(result, true, null));
-c.abandon();
+contract.set_template(tmpl);
+child = child_process.spawn('/usr/bin/false');
+contract.clear_template();
+ct = contract.last();
+ct.on('CT_PR_EV_EMPTY', function (ev) {
+	console.log('contract ' + ct.ctid + ' empty');
+	ct.abandon();
+	ct.removeAllListeners();
+});

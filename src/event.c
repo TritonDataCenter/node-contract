@@ -2,9 +2,14 @@
  * Copyright (c) 2012, Joyent, Inc.  All rights reserved.
  */
 
+#include <sys/contract/process.h>
+#include <sys/contract/device.h>
 #include <libcontract.h>
 #include <libnvpair.h>
 #include <stdio.h>
+#include <string.h>
+#include <alloca.h>
+#include "node_contract.h"
 
 #define	MAXINT_STRLEN	32
 
@@ -37,7 +42,7 @@ static const uint_t n_ct_evtypes = sizeof (ct_evtypes) / sizeof (ct_evtypes[0]);
 static size_t
 event_type_name(uint_t type, char *buf, size_t len)
 {
-	const char *p;
+	const char *p = NULL;
 	uint_t i;
 
 	for (i = 0; i < n_ct_evtypes; i++) {
@@ -94,7 +99,6 @@ ct_ev_to_nvlist(ct_evthdl_t eh, ctid_t ctid, const char *typestr)
 	uint_t flags;
 	size_t len;
 	int err;
-	int i;
 
 	if ((err = nvlist_alloc(&lp, NV_UNIQUE_NAME, 0)) != 0)
 		return (v8plus_nverr(err, NULL));

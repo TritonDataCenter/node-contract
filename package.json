@@ -10,17 +10,16 @@
 	"bugs": {
 		"url" : "http://github.com/wesolows/node-contract/issues"
 	},
-	"main": "lib/index.js",
+	"main": "lib/contract.js",
 	"engines": {
-		"node": "~0.6.18"
+		"node": "~0.8.1"
 	},
 	"dependencies": {
-		"bunyan": "~0.7.1",
-		"dtrace-provider": "0.0",
+		"bunyan": "~0.10.0",
 		"posix-getopt": "~0.0.1"
 	},
 	"devDependencies": {
-		"tap": "0.2"
+		"tap": "~0.2"
 	},
 	"scripts": {
 		"pretest": "which gjslint; if [[ \"$?\" = 0 ]] ; then  gjslint --nojsdoc -r lib -r tst; else echo \"Missing gjslint. Skipping lint\"; fi",
