@@ -13,12 +13,20 @@ extern "C" {
 
 typedef struct node_contract {
 	ctid_t nc_id;
-	int nc_tmpl_fd;
 	int nc_ctl_fd;
 	int nc_ev_fd;
+	uv_poll_t nc_uv_poll;
 	pthread_t nc_self;
-	void *nc_js_cb_cookie;
 } node_contract_t;
+
+typedef struct contract_mgr {
+	int cm_tmpl_fd;
+} contract_mgr_t;
+
+extern node_contract_t *nc_lookup(ctid_t);
+extern int nc_add(ctid_t, node_contract_t *);
+extern void nc_del(const node_contract_t *);
+extern void handle_events(int);
 
 #ifdef	__cplusplus
 }

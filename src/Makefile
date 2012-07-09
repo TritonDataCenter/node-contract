@@ -9,6 +9,8 @@ include $(V8PLUS)/Makefile.v8plus.defs
 MODULE =	contract
 
 SRCS =	\
+		contracts.c \
+		event.c \
 		node_contract.c
 
 ERRNO_JSON =	errno.json
