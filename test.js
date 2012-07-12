@@ -14,7 +14,7 @@ var tmpl = {
 		pr_exit: true,
 		pr_core: true
 	},
-	params: {
+	param: {
 		noorphan: true
 	}
 };
@@ -23,9 +23,13 @@ contract.set_template(tmpl);
 child = child_process.spawn('/usr/bin/false');
 contract.clear_template();
 ct = contract.latest();
+console.log(util.inspect(ct.status(), null, true));
+
 ct.on('pr_empty', function (ev) {
 	console.log(util.inspect(ev, null, true));
-	console.log('contract ' + ev.nce_ctid + ' empty');
+	console.log('contract ' + ev.ctid + ' has emptied');
+	console.log(util.inspect(ct.status(), null, true));
+
 	ct.abandon();
 	ct.removeAllListeners();
 	ct = null;

@@ -57,9 +57,9 @@ handle_events(int fd)
 		flags = ct_event_get_flags(eh);
 
 		sap = v8plus_obj(
-			VP(nce_ctid, NUMBER, (double)ctid),
-			VP(nce_evid, STRNUMBER64, (uint64_t)evid),
-			VP_V(nce_flags, INL_OBJECT),
+			VP(ctid, NUMBER, (double)ctid),
+			VP(evid, STRNUMBER64, (uint64_t)evid),
+			VP_V(flags, INL_OBJECT),
 			    VP(info, BOOLEAN, (flags & CTE_INFO) != 0),
 			    VP(ack, BOOLEAN, (flags & CTE_ACK) != 0),
 			    VP(neg, BOOLEAN, (flags & CTE_NEG) != 0),
@@ -76,8 +76,8 @@ handle_events(int fd)
 			(void) ct_event_get_nevid(eh, &nevid);
 			(void) ct_event_get_newct(eh, &newct);
 			err = v8plus_obj_setprops(sap,
-			    VP(nce_nevid, STRNUMBER64, (uint64_t)nevid),
-			    VP(nce_newct, NUMBER, (double)newct),
+			    VP(nevid, STRNUMBER64, (uint64_t)nevid),
+			    VP(newct, NUMBER, (double)newct),
 			    V8PLUS_TYPE_NONE);
 			if (err != 0) {
 				nvlist_free(sap);

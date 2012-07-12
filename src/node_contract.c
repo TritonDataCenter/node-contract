@@ -460,7 +460,7 @@ nc_dev_tmpl_setprop(int fd, const nvlist_t *lp)
 	int err;
 	const nc_descr_t *dp;
 
-	if (nvlist_lookup_nvlist((nvlist_t *)lp, "aset", &sp) == 0) {
+	if (nvlist_lookup_nvlist((nvlist_t *)lp, "dev_aset", &sp) == 0) {
 		uint_t aset = 0;
 
 		for (dp = nc_dev_states; dp->ncd_str != NULL; dp++) {
@@ -476,7 +476,7 @@ nc_dev_tmpl_setprop(int fd, const nvlist_t *lp)
 		}
 	}
 
-	if (nvlist_lookup_string((nvlist_t *)lp, "minor", &s) == 0) {
+	if (nvlist_lookup_string((nvlist_t *)lp, "dev_minor", &s) == 0) {
 		if ((err = ct_dev_tmpl_set_minor(fd, s)) != 0) {
 			(void) v8plus_syserr(err,
 			    "unable to set template property minor: %s",
@@ -485,7 +485,7 @@ nc_dev_tmpl_setprop(int fd, const nvlist_t *lp)
 		}
 	}
 
-	if (nvlist_lookup_boolean_value((nvlist_t *)lp, "noneg", &b) == 0) {
+	if (nvlist_lookup_boolean_value((nvlist_t *)lp, "dev_noneg", &b) == 0) {
 		if (b)
 			err = ct_dev_tmpl_set_noneg(fd);
 		else
@@ -733,7 +733,7 @@ node_contract_qack(void *op, const nvlist_t *ap)
 }
 
 #define	VP(_n, _t, _v) \
-	V8PLUS_TYPE_##_t, "nc_" #_n, (_v)
+	V8PLUS_TYPE_##_t, #_n, (_v)
 
 static int
 nc_pr_status_add_to_nvlist(nvlist_t *lp, ct_stathdl_t st)
@@ -774,12 +774,12 @@ nc_pr_status_add_to_nvlist(nvlist_t *lp, ct_stathdl_t st)
 			return (-1);
 		}
 	}
-	if ((err = nvlist_add_nvlist(lp, "param", sp) != 0)) {
-		nvlist_free(sp);
-		(void) v8plus_nverr(err, "param");
-		return (-1);
-	}
+	err = v8plus_obj_setprops(lp,
+	    V8PLUS_TYPE_OBJECT, "pr_param", sp,
+	    V8PLUS_TYPE_NONE);
 	nvlist_free(sp);
+	if (err != 0)
+		return (-1);
 
 	if ((sp = v8plus_obj(V8PLUS_TYPE_NONE)) == NULL)
 		return (-1);
@@ -791,12 +791,12 @@ nc_pr_status_add_to_nvlist(nvlist_t *lp, ct_stathdl_t st)
 			return (-1);
 		}
 	}
-	if ((err = nvlist_add_nvlist(lp, "fatal", sp) != 0)) {
-		nvlist_free(sp);
-		(void) v8plus_nverr(err, "fatal");
-		return (-1);
-	}
+	err = v8plus_obj_setprops(lp,
+	    V8PLUS_TYPE_OBJECT, "pr_fatal", sp,
+	    V8PLUS_TYPE_NONE);
 	nvlist_free(sp);
+	if (err != 0)
+		return (-1);
 
 	if (npids > 0) {
 		if ((sp = v8plus_obj(V8PLUS_TYPE_NONE)) == NULL)
@@ -810,7 +810,9 @@ nc_pr_status_add_to_nvlist(nvlist_t *lp, ct_stathdl_t st)
 				return (-1);
 			}
 		}
-		err = nvlist_add_nvlist(lp, "members", sp);
+		err = v8plus_obj_setprops(lp,
+		    V8PLUS_TYPE_OBJECT, "pr_members", sp,
+		    V8PLUS_TYPE_NONE);
 		nvlist_free(sp);
 		if (err != 0)
 			return (-1);
@@ -828,26 +830,28 @@ nc_pr_status_add_to_nvlist(nvlist_t *lp, ct_stathdl_t st)
 				return (-1);
 			}
 		}
-		err = nvlist_add_nvlist(lp, "contracts", sp);
+		err = v8plus_obj_setprops(lp,
+		    V8PLUS_TYPE_OBJECT, "pr_contracts", sp,
+		    V8PLUS_TYPE_NONE);
 		nvlist_free(sp);
 		if (err != 0)
 			return (-1);
 	}
 
 	if (fmri != NULL && v8plus_obj_setprops(lp,
-	    V8PLUS_TYPE_STRING, "svc_fmri", fmri,
+	    V8PLUS_TYPE_STRING, "pr_svc_fmri", fmri,
 	    V8PLUS_TYPE_NONE) != 0)
 		return (-1);
 	if (aux != NULL && v8plus_obj_setprops(lp,
-	    V8PLUS_TYPE_STRING, "svc_aux", aux,
+	    V8PLUS_TYPE_STRING, "pr_svc_aux", aux,
 	    V8PLUS_TYPE_NONE) != 0)
 		return (-1);
 	if (svc_ctid != 0 && v8plus_obj_setprops(lp,
-	    V8PLUS_TYPE_NUMBER, "svc_ctid", (double)svc_ctid,
+	    V8PLUS_TYPE_NUMBER, "pr_svc_ctid", (double)svc_ctid,
 	    V8PLUS_TYPE_NONE) != 0)
 		return (-1);
 	if (creator != NULL && v8plus_obj_setprops(lp,
-	    V8PLUS_TYPE_STRING, "svc_creator", creator,
+	    V8PLUS_TYPE_STRING, "pr_svc_creator", creator,
 	    V8PLUS_TYPE_NONE) != 0)
 		return (-1);
 
@@ -886,20 +890,20 @@ nc_dev_status_add_to_nvlist(nvlist_t *lp, ct_stathdl_t st)
 			return (-1);
 		}
 	}
-	if ((err = nvlist_add_nvlist(lp, "aset", sp) != 0)) {
-		nvlist_free(sp);
-		(void) v8plus_nverr(err, "aset");
-		return (-1);
-	}
+	err = v8plus_obj_setprops(lp,
+	    V8PLUS_TYPE_OBJECT, "dev_aset", sp,
+	    V8PLUS_TYPE_NONE);
 	nvlist_free(sp);
+	if (err != 0)
+		return (-1);
 
 	if (v8plus_obj_setprops(lp,
-	    V8PLUS_TYPE_STRING, "minor", minor,
+	    V8PLUS_TYPE_STRING, "dev_minor", minor,
 	    V8PLUS_TYPE_NONE) != 0)
 		return (-1);
 
 	if (v8plus_obj_setprops(lp,
-	    V8PLUS_TYPE_BOOLEAN, "noneg", (noneg != 0),
+	    V8PLUS_TYPE_BOOLEAN, "dev_noneg", (noneg != 0),
 	    V8PLUS_TYPE_NONE) != 0)
 		return (-1);
 
@@ -960,19 +964,21 @@ nc_status_to_nvlist(ct_stathdl_t st)
 			return (NULL);
 		}
 	}
-	if ((err = nvlist_add_nvlist(rp, "informative", srp) != 0)) {
-		nvlist_free(rp);
-		nvlist_free(srp);
-		return (v8plus_nverr(err, "informative"));
-	}
+	err = v8plus_obj_setprops(rp,
+	    V8PLUS_TYPE_OBJECT, "informative", srp,
+	    V8PLUS_TYPE_NONE);
 	nvlist_free(srp);
+	if (err != 0) {
+		nvlist_free(rp);
+		return (NULL);
+	}
 
 	if ((srp = v8plus_obj(V8PLUS_TYPE_NONE)) == NULL) {
 		nvlist_free(rp);
 		return (NULL);
 	}
 	for (dp = ntp->nct_events; dp->ncd_str != NULL; dp++) {
-		if (v8plus_obj_setprops(rp,
+		if (v8plus_obj_setprops(srp,
 		    V8PLUS_TYPE_BOOLEAN, dp->ncd_str,
 		    (crit & dp->ncd_i) != 0,
 		    V8PLUS_TYPE_NONE) != 0) {
@@ -980,12 +986,14 @@ nc_status_to_nvlist(ct_stathdl_t st)
 			return (NULL);
 		}
 	}
-	if ((err = nvlist_add_nvlist(rp, "critical", srp) != 0)) {
-		nvlist_free(rp);
-		nvlist_free(srp);
-		return (v8plus_nverr(err, "critical"));
-	}
+	err = v8plus_obj_setprops(rp,
+	    V8PLUS_TYPE_OBJECT, "critical", srp,
+	    V8PLUS_TYPE_NONE);
 	nvlist_free(srp);
+	if (err != 0) {
+		nvlist_free(rp);
+		return (NULL);
+	}
 
 	if (ntp->nct_status_add_to_nvlist(rp, st) != 0) {
 		nvlist_free(rp);
@@ -1010,7 +1018,7 @@ node_contract_status(void *op, const nvlist_t *ap)
 		    "the status method accepts no arguments"));
 	}
 
-	if ((err = ct_status_read(cp->nc_ctl_fd, CTD_ALL, &st)) != 0) {
+	if ((err = ct_status_read(cp->nc_st_fd, CTD_ALL, &st)) != 0) {
 		return (v8plus_syserr(err, "unable to read status: %s",
 		    strerror(err)));
 	}
@@ -1023,10 +1031,14 @@ node_contract_status(void *op, const nvlist_t *ap)
 	lp = nc_status_to_nvlist(st);
 	ct_status_free(st);
 
-	if (lp == NULL || (err = nvlist_add_nvlist(rp, "res", lp) != 0)) {
-		nvlist_free(rp);
+	if (lp == NULL)
 		return (NULL);
-	}
+
+	rp = v8plus_obj(
+	    V8PLUS_TYPE_OBJECT, "res", lp,
+	    V8PLUS_TYPE_NONE);
+
+	nvlist_free(lp);
 
 	return (rp);
 }

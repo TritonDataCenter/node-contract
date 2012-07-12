@@ -6,22 +6,23 @@ process(4), and device_contract(4) documentation.
 
 ## Quick Start
 
-	var contract = require('contract.js');
-	var child_process = require('child_process.js');
+	var contract = require('./lib/contract.js');
+	var util = require('util');
+	var child_process = require('child_process');
 
 	var ct;
 	var child;
 	var tmpl = {
 		type: 'process',
 		critical: {
-			empty: true,
-			hwerr: true
+			pr_empty: true,
+			pr_hwerr: true
 		},
 		informative: {
-			exit: true,
-			core: true
+			pr_exit: true,
+			pr_core: true
 		},
-		params: {
+		param: {
 			noorphan: true
 		}
 	};
@@ -30,10 +31,16 @@ process(4), and device_contract(4) documentation.
 	child = child_process.spawn('/usr/sbin/rpcbind');
 	contract.clear_template();
 	ct = contract.latest();
+	console.log(util.inspect(ct.status(), null, true));
+
 	ct.on('pr_empty', function (ev) {
-		console.log('contract ' + ev.nce_ctid + ' empty');
+		console.log(util.inspect(ev, null, true));
+		console.log('contract ' + ev.ctid + ' has emptied');
+		console.log(util.inspect(ct.status(), null, true));
+
 		ct.abandon();
 		ct.removeAllListeners();
+		ct = null;
 	});
 
 ## Creating Contracts
