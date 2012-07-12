@@ -24,7 +24,8 @@ process(4), and device_contract(4) documentation.
 		},
 		param: {
 			noorphan: true
-		}
+		},
+		cookie: '0xdeadbeef`
 	};
 
 	contract.set_template(tmpl);

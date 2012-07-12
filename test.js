@@ -16,7 +16,8 @@ var tmpl = {
 	},
 	param: {
 		noorphan: true
-	}
+	},
+	cookie: '0xdeadbeef'
 };
 
 contract.set_template(tmpl);

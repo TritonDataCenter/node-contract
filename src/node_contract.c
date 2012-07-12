@@ -501,6 +501,69 @@ nc_dev_tmpl_setprop(int fd, const nvlist_t *lp)
 	return (0);
 }
 
+static int
+nc_generic_tmpl_setprop(int fd, const nvlist_t *lp, const nc_typedesc_t *ntp)
+{
+	char *s;
+	boolean_t b;
+	nvlist_t *sp;
+	int err;
+	const nc_descr_t *dp;
+
+	if (nvlist_lookup_nvlist((nvlist_t *)lp, "critical", &sp) == 0) {
+		uint_t evset = 0;
+
+		for (dp = ntp->nct_events; dp->ncd_str != NULL; dp++) {
+			if (nvlist_lookup_boolean_value(sp,
+			    dp->ncd_str, &b) == 0 && b)
+				evset |= dp->ncd_i;
+		}
+		if ((err = ct_tmpl_set_critical(fd, evset)) != 0) {
+			(void) v8plus_syserr(err,
+			    "unable to set template property critical: %s",
+			    strerror(err));
+			return (-1);
+		}
+	}
+
+	if (nvlist_lookup_nvlist((nvlist_t *)lp, "informative", &sp) == 0) {
+		uint_t evset = 0;
+
+		for (dp = ntp->nct_events; dp->ncd_str != NULL; dp++) {
+			if (nvlist_lookup_boolean_value(sp,
+			    dp->ncd_str, &b) == 0 && b)
+				evset |= dp->ncd_i;
+		}
+		if ((err = ct_tmpl_set_informative(fd, evset)) != 0) {
+			(void) v8plus_syserr(err,
+			    "unable to set template property informative: %s",
+			    strerror(err));
+			return (-1);
+		}
+	}
+
+	if (nvlist_lookup_string((nvlist_t *)lp, "cookie", &s) == 0) {
+		uint64_t cv;
+
+		errno = 0;
+		cv = strtoull(s, NULL, 0);
+		if (errno != 0) {
+			(void) v8plus_syserr(errno,
+			    "unable to parse template property cookie: %s",
+			    strerror(errno));
+			return (-1);
+		}
+		if ((err = ct_tmpl_set_cookie(fd, cv)) != 0) {
+			(void) v8plus_syserr(err,
+			    "unable to set template property cookie: %s",
+			    strerror(err));
+			return (-1);
+		}
+	}
+
+	return (0);
+}
+
 static nvlist_t *
 node_contract_set_tmpl(const nvlist_t *ap)
 {
@@ -540,6 +603,12 @@ node_contract_set_tmpl(const nvlist_t *ap)
 		    CTFS_ROOT "/process/template", strerror(errno)));
 	}
 	if (close_on_exec(mgr.cm_tmpl_fd) != 0) {
+		(void) close(mgr.cm_tmpl_fd);
+		mgr.cm_tmpl_fd = -1;
+		return (NULL);
+	}
+
+	if (nc_generic_tmpl_setprop(mgr.cm_tmpl_fd, params, ntp) != 0) {
 		(void) close(mgr.cm_tmpl_fd);
 		mgr.cm_tmpl_fd = -1;
 		return (NULL);
@@ -936,16 +1005,17 @@ nc_status_to_nvlist(ct_stathdl_t st)
 	crit = ct_status_get_critical(st);
 
 	rp = v8plus_obj(
-	    VP(ctid, NUMBER, (double) ct_status_get_id(st)),
-	    VP(zoneid, NUMBER, (double) ct_status_get_zoneid(st)),
+	    VP(ctid, NUMBER, (double)ct_status_get_id(st)),
+	    VP(zoneid, NUMBER, (double)ct_status_get_zoneid(st)),
 	    VP(type, STRING, typename),
 	    VP(state, STRING,
 		nc_descr_strlookup(nc_ct_states, ct_status_get_state(st))),
-	    VP(holder, NUMBER, (double) ct_status_get_holder(st)),
-	    VP(nevents, NUMBER, (double) ct_status_get_nevents(st)),
-	    VP(ntime, NUMBER, (double) ct_status_get_ntime(st)),
-	    VP(qtime, NUMBER, (double) ct_status_get_qtime(st)),
+	    VP(holder, NUMBER, (double)ct_status_get_holder(st)),
+	    VP(nevents, NUMBER, (double)ct_status_get_nevents(st)),
+	    VP(ntime, NUMBER, (double)ct_status_get_ntime(st)),
+	    VP(qtime, NUMBER, (double)ct_status_get_qtime(st)),
 	    VP(nevid, STRNUMBER64, ct_status_get_nevid(st)),
+	    VP(cookie, STRNUMBER64, ct_status_get_cookie(st)),
 	    V8PLUS_TYPE_NONE);
 
 	if (rp == NULL)
