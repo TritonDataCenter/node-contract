@@ -19,4 +19,6 @@ PREFIX_NODE =	/opt/local
 CC =		/opt/local/bin/gcc
 CXX =		/opt/local/bin/g++
 
+LIBS +=		-lcontract
+
 include $(V8PLUS)/Makefile.v8plus.targ

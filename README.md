@@ -13,17 +13,25 @@ process(4), and device_contract(4) documentation.
 	var child;
 	var tmpl = {
 		type: 'process',
-		critical: [ 'CT_PR_EV_EMPTY', 'CT_PR_EV_HWERR' ],
-		informative: [ 'CT_PR_EV_EXIT', 'CT_PR_EV_CORE' ],
-		params: [ 'CT_PR_NOORPHAN' ]
+		critical: {
+			empty: true,
+			hwerr: true
+		},
+		informative: {
+			exit: true,
+			core: true
+		},
+		params: {
+			noorphan: true
+		}
 	};
 
 	contract.set_template(tmpl);
 	child = child_process.spawn('/usr/sbin/rpcbind');
 	contract.clear_template();
-	ct = contract.last();
-	ct.on('CT_PR_EV_EMPTY', function (ev) {
-		console.log('contract ' + ct.ctid + ' empty');
+	ct = contract.latest();
+	ct.on('pr_empty', function (ev) {
+		console.log('contract ' + ev.nce_ctid + ' empty');
 		ct.abandon();
 		ct.removeAllListeners();
 	});
@@ -45,10 +53,10 @@ contract.observe([Number] ctid)
 contract.adopt([Number] ctid)
 contract.set_template([Object] template)
 contract.create() [ or open, fork, etc. ]
-contract.last()
+contract.latest()
 contract.clear_template()
 
-The observe(), adopt(), and last() methods return an object of type
+The observe(), adopt(), and latest() methods return an object of type
 Contract, with the following methods:
 
 Contract.status()

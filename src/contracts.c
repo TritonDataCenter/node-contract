@@ -35,7 +35,7 @@ nc_add(ctid_t ctid, node_contract_t *cp)
 
 	ep->ce_ctid = ctid;
 	ep->ce_contract = cp;
-	ctid_head->ce_next = ctid_head;
+	ep->ce_next = ctid_head;
 	ctid_head = ep;
 
 	return (0);

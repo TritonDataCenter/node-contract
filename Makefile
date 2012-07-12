@@ -27,7 +27,15 @@ DOC_FILES	 = \
 		index.restdown
 
 JS_FILES	:= \
-		lib/index.js
+		lib/contract.js \
+		test.js
+
+CLEAN_FILES	+= \
+		lib/contract_binding.node \
+		src/*.o \
+		src/v8plus_errno.c \
+		src/v8plus_errno.h \
+		src/mapfile_node
 		
 JSL_CONF_NODE	 = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
@@ -42,7 +50,7 @@ all: rebuild
 
 .PHONY: rebuild
 rebuild:
-	node-waf configure build
+	(cd src && $(MAKE))
 	$(NPM) rebuild
 
 .PHONY: test
