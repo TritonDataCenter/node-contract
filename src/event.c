@@ -16,6 +16,8 @@
 #define	VP_V(_n, _t) \
 	V8PLUS_TYPE_##_t, #_n
 
+static uint_t ev_failures;
+
 void
 handle_events(int fd)
 {
@@ -44,6 +46,7 @@ handle_events(int fd)
 		 */
 		if (cp == NULL) {
 			ct_event_free(eh);
+			++ev_failures;
 			continue;
 		}
 
@@ -53,9 +56,7 @@ handle_events(int fd)
 		evid = ct_event_get_evid(eh);
 		flags = ct_event_get_flags(eh);
 
-		ap = v8plus_obj(
-		    VP(0, STRING, nc_descr_strlookup(dp, evtype)),
-		    VP_V(1, INL_OBJECT),
+		sap = v8plus_obj(
 			VP(nce_ctid, NUMBER, (double)ctid),
 			VP(nce_evid, STRNUMBER64, (uint64_t)evid),
 			VP_V(nce_flags, INL_OBJECT),
@@ -63,16 +64,15 @@ handle_events(int fd)
 			    VP(ack, BOOLEAN, (flags & CTE_ACK) != 0),
 			    VP(neg, BOOLEAN, (flags & CTE_NEG) != 0),
 			    V8PLUS_TYPE_NONE,
-			V8PLUS_TYPE_NONE,
-		    V8PLUS_TYPE_NONE);
+			V8PLUS_TYPE_NONE);
 
-		if (ap == NULL) {
+		if (sap == NULL) {
 			ct_event_free(eh);
+			++ev_failures;
 			continue;
 		}
 
-		if (evtype == CT_EV_NEGEND &&
-		    nvlist_lookup_nvlist(ap, "0", &sap) == 0) {
+		if (evtype == CT_EV_NEGEND) {
 			(void) ct_event_get_nevid(eh, &nevid);
 			(void) ct_event_get_newct(eh, &newct);
 			err = v8plus_obj_setprops(sap,
@@ -80,16 +80,29 @@ handle_events(int fd)
 			    VP(nce_newct, NUMBER, (double)newct),
 			    V8PLUS_TYPE_NONE);
 			if (err != 0) {
-				nvlist_free(ap);
-				ap = NULL;
+				nvlist_free(sap);
+				ct_event_free(eh);
+				++ev_failures;
+				continue;
 			}
 		}
 
-		if (ap != NULL) {
-			rp = v8plus_method_call(cp, "_emit", ap);
-			nvlist_free(ap);
-			nvlist_free(rp);
+		ap = v8plus_obj(
+		    VP(0, STRING, nc_descr_strlookup(dp, evtype)),
+		    VP(1, OBJECT, sap),
+		    V8PLUS_TYPE_NONE);
+
+		nvlist_free(sap);
+		ct_event_free(eh);
+
+		if (ap == NULL) {
+			++ev_failures;
+			continue;
 		}
+
+		rp = v8plus_method_call(cp, "_emit", ap);
+		nvlist_free(ap);
+		nvlist_free(rp);
 	}
 
 	if (err != EAGAIN) {
