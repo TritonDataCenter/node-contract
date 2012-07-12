@@ -28,4 +28,5 @@ ct.on('pr_empty', function (ev) {
 	console.log('contract ' + ev.nce_ctid + ' empty');
 	ct.abandon();
 	ct.removeAllListeners();
+	ct = null;
 });

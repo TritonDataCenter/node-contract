@@ -6,6 +6,7 @@
 #include <sys/ctfs.h>
 #include <sys/types.h>
 #include <sys/debug.h>
+#include <sys/param.h>
 #include <sys/contract/process.h>
 #include <sys/contract/device.h>
 #include <fcntl.h>
@@ -121,9 +122,9 @@ node_contract_ctor_common(int sfd)
 	cp->nc_ev_fd = -1;
 
 	if ((err = ct_status_read(sfd, CTD_COMMON, &st)) != 0) {
-		node_contract_free(cp);
 		(void) v8plus_syserr(err,
 		    "unable to obtain contract status: %s", strerror(err));
+		node_contract_free(cp);
 		return (NULL);
 	}
 
@@ -135,9 +136,9 @@ node_contract_ctor_common(int sfd)
 			cp->nc_type = ntp;
 	}
 	if (cp->nc_type == NULL) {
-		node_contract_free(cp);
 		(void) v8plus_error(V8PLUSERR_BADCTTYPE,
 		    "unknown contract type %s", typename);
+		node_contract_free(cp);
 		return (NULL);
 	}
 	ct_status_free(st);
@@ -148,35 +149,7 @@ node_contract_ctor_common(int sfd)
 static int
 node_contract_ctor_post(node_contract_t *cp)
 {
-	nc_type_t t = cp->nc_type->nct_type;
-	char buf[PATH_MAX];
-	int err;
-
-	if (cp->nc_ev_fd < 0 && mgr.cm_ev_fds[t] < 0) {
-		(void) snprintf(buf, sizeof (buf), "%s/pbundle",
-		    cp->nc_type->nct_root);
-		if ((mgr.cm_ev_fds[t] =
-		    open64(buf, O_RDONLY | O_NONBLOCK)) < 0) {
-			err = errno;
-			(void) v8plus_syserr(err,
-			    "unable to open contract pbundle event handle: %s",
-			    strerror(err));
-			node_contract_free(cp);
-			return (-1);
-		}
-		if (close_on_exec(mgr.cm_ev_fds[t]) != 0) {
-			(void) close(mgr.cm_ev_fds[t]);
-			mgr.cm_ev_fds[t] = -1;
-			node_contract_free(cp);
-			return (-1);
-		}
-
-		(void) uv_poll_init(uv_default_loop(),
-		    &mgr.cm_uv_poll[t], mgr.cm_ev_fds[t]);
-		mgr.cm_uv_poll[t].data = (void *)(uintptr_t)mgr.cm_ev_fds[t];
-		(void) uv_poll_start(&mgr.cm_uv_poll[t],
-		    UV_READABLE, node_contract_event_cb);
-	}
+	char buf[MAXPATHLEN];
 
 	/*
 	 * We can't necessarily control a contract we're only observing, so
@@ -185,11 +158,10 @@ node_contract_ctor_post(node_contract_t *cp)
 	if (cp->nc_ev_fd < 0 && cp->nc_ctl_fd < 0) {
 		(void) snprintf(buf, sizeof (buf), "%s/%d/ctl",
 		    cp->nc_type->nct_root, (int)cp->nc_id);
-		if ((cp->nc_ctl_fd = open64(buf, O_WRONLY)) < 0) {
-			err = errno;
-			(void) v8plus_syserr(err,
+		if ((cp->nc_ctl_fd = open(buf, O_WRONLY)) < 0) {
+			(void) v8plus_syserr(errno,
 			    "unable to open ctl for ct %d: %s", cp->nc_id,
-			    strerror(err));
+			    strerror(errno));
 			node_contract_free(cp);
 			return (-1);
 		}
@@ -204,7 +176,7 @@ static nvlist_t *
 node_contract_ctor_latest(void **cpp)
 {
 	node_contract_t *cp;
-	char spath[PATH_MAX];
+	char spath[MAXPATHLEN];
 	int sfd;
 
 	if (mgr.cm_last_type == NULL) {
@@ -214,7 +186,7 @@ node_contract_ctor_latest(void **cpp)
 
 	(void) snprintf(spath, sizeof (spath), "%s/latest",
 	    mgr.cm_last_type->nct_root);
-	if ((sfd = open64(spath, O_RDONLY)) < 0) {
+	if ((sfd = open(spath, O_RDONLY)) < 0) {
 		return (v8plus_syserr(errno,
 		    "unable to open latest contract: %s", strerror(errno)));
 	}
@@ -252,12 +224,12 @@ static nvlist_t *
 node_contract_ctor_adopt(ctid_t ctid, void **cpp)
 {
 	node_contract_t *cp;
-	char buf[PATH_MAX];
+	char buf[MAXPATHLEN];
 	int sfd;
 	int err;
 
 	(void) snprintf(buf, sizeof (buf), CTFS_ROOT "/all/%d", (int)ctid);
-	if ((sfd = open64(buf, O_RDONLY)) < 0) {
+	if ((sfd = open(buf, O_RDONLY)) < 0) {
 		return (v8plus_syserr(errno,
 		    "unable to open contract %d status handle: %s", (int)ctid,
 		    strerror(errno)));
@@ -274,7 +246,7 @@ node_contract_ctor_adopt(ctid_t ctid, void **cpp)
 
 	(void) snprintf(buf, sizeof (buf), "%s/%d/ctl", cp->nc_type->nct_root,
 	    (int)ctid);
-	if ((cp->nc_ctl_fd = open64(buf, O_WRONLY)) < 0) {
+	if ((cp->nc_ctl_fd = open(buf, O_WRONLY)) < 0) {
 		node_contract_free(cp);
 		return (v8plus_syserr(errno,
 		    "unable to open contract %d ctl handle: %s", (int)ctid,
@@ -286,7 +258,7 @@ node_contract_ctor_adopt(ctid_t ctid, void **cpp)
 	}
 	if ((err = ct_ctl_adopt(cp->nc_ctl_fd)) != 0) {
 		node_contract_free(cp);
-		return (v8plus_syserr(errno,
+		return (v8plus_syserr(err,
 		    "unable to adopt contract %d: %s", (int)ctid,
 		    strerror(err)));
 	}
@@ -310,12 +282,12 @@ static nvlist_t *
 node_contract_ctor_observe(ctid_t ctid, void **cpp)
 {
 	node_contract_t *cp;
-	char buf[PATH_MAX];
+	char buf[MAXPATHLEN];
 	int sfd;
 	int err;
 
 	(void) snprintf(buf, sizeof (buf), CTFS_ROOT "/all/%d", (int)ctid);
-	if ((sfd = open64(buf, O_RDONLY)) < 0) {
+	if ((sfd = open(buf, O_RDONLY)) < 0) {
 		return (v8plus_syserr(errno,
 		    "unable to open contract %d status handle: %s", (int)ctid,
 		    strerror(errno)));
@@ -332,7 +304,7 @@ node_contract_ctor_observe(ctid_t ctid, void **cpp)
 
 	(void) snprintf(buf, sizeof (buf),
 	    CTFS_ROOT "/all/%d/events", (int)ctid);
-	if ((cp->nc_ev_fd = open64(buf, O_RDONLY | O_NONBLOCK)) < 0) {
+	if ((cp->nc_ev_fd = open(buf, O_RDONLY | O_NONBLOCK)) < 0) {
 		err = errno;
 		node_contract_free(cp);
 		return (v8plus_syserr(err,
@@ -535,6 +507,7 @@ node_contract_set_tmpl(const nvlist_t *ap)
 	const nc_typedesc_t *ntp;
 	nvlist_t *params;
 	char *typename;
+	char buf[MAXPATHLEN];
 	int err;
 
 	if (v8plus_args(ap, V8PLUS_ARG_F_NOEXTRA,
@@ -561,7 +534,7 @@ node_contract_set_tmpl(const nvlist_t *ap)
 		(void) close(mgr.cm_tmpl_fd);
 	}
 
-	mgr.cm_tmpl_fd = open64(CTFS_ROOT "/process/template", O_RDWR);
+	mgr.cm_tmpl_fd = open(CTFS_ROOT "/process/template", O_RDWR);
 	if (mgr.cm_tmpl_fd < 0) {
 		return (v8plus_syserr(errno, "unable to open %s: %s",
 		    CTFS_ROOT "/process/template", strerror(errno)));
@@ -576,6 +549,34 @@ node_contract_set_tmpl(const nvlist_t *ap)
 		(void) close(mgr.cm_tmpl_fd);
 		mgr.cm_tmpl_fd = -1;
 		return (NULL);
+	}
+
+	if (mgr.cm_ev_fds[ntp->nct_type] < 0) {
+		(void) snprintf(buf, sizeof (buf), "%s/pbundle", ntp->nct_root);
+		if ((mgr.cm_ev_fds[ntp->nct_type] =
+		    open(buf, O_RDONLY | O_NONBLOCK)) < 0) {
+			err = errno;
+			(void) close(mgr.cm_tmpl_fd);
+			mgr.cm_tmpl_fd = -1;
+			return (v8plus_syserr(err,
+			    "unable to open contract pbundle event handle: %s",
+			    strerror(err)));
+		}
+		if (close_on_exec(mgr.cm_ev_fds[ntp->nct_type]) != 0) {
+			(void) close(mgr.cm_ev_fds[ntp->nct_type]);
+			mgr.cm_ev_fds[ntp->nct_type] = -1;
+			(void) close(mgr.cm_tmpl_fd);
+			mgr.cm_tmpl_fd = -1;
+			return (NULL);
+		}
+
+		(void) uv_poll_init(uv_default_loop(),
+		    &mgr.cm_uv_poll[ntp->nct_type],
+		    mgr.cm_ev_fds[ntp->nct_type]);
+		mgr.cm_uv_poll[ntp->nct_type].data =
+		    (void *)(uintptr_t)mgr.cm_ev_fds[ntp->nct_type];
+		(void) uv_poll_start(&mgr.cm_uv_poll[ntp->nct_type],
+		    UV_READABLE, node_contract_event_cb);
 	}
 
 	if ((err = ct_tmpl_activate(mgr.cm_tmpl_fd)) != 0) {
@@ -648,7 +649,6 @@ node_contract_abandon(void *op, const nvlist_t *ap __UNUSED)
 		    strerror(err)));
 	}
 
-	node_contract_free(cp);
 	nc_del(cp);
 
 	return (v8plus_void());
@@ -1106,6 +1106,14 @@ static const nc_descr_t _nc_ct_states[] = {
 	{ 0,			NULL }
 };
 const nc_descr_t *nc_ct_states = _nc_ct_states;
+
+static const nc_descr_t _nc_ev_flags[] = {
+	{ CTE_INFO,		"info" },
+	{ CTE_ACK,		"ack" },
+	{ CTE_NEG,		"neg" },
+	{ 0,			NULL }
+};
+const nc_descr_t *nc_ev_flags = _nc_ev_flags;
 
 /*
  * v8+ boilerplate

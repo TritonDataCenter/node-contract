@@ -54,6 +54,7 @@ extern const nc_typedesc_t *nc_types;
 extern const nc_descr_t *nc_ct_states;
 extern const nc_descr_t *nc_pr_params;
 extern const nc_descr_t *nc_dev_states;
+extern const nc_descr_t *nc_ev_flags;
 
 extern const char *nc_descr_strlookup(const nc_descr_t *, uint_t);
 extern uint_t nc_descr_ilookup(const nc_descr_t *, const char *);

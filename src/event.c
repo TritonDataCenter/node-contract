@@ -20,7 +20,7 @@ void
 handle_events(int fd)
 {
 	node_contract_t *cp;
-	const nc_descr_t *edp;
+	const nc_descr_t *dp;
 	ct_evthdl_t eh;
 	ctid_t ctid;
 	uint_t evtype;
@@ -47,24 +47,29 @@ handle_events(int fd)
 			continue;
 		}
 
-		edp = cp->nc_type->nct_events;
+		dp = cp->nc_type->nct_events;
 
 		evtype = ct_event_get_type(eh);
 		evid = ct_event_get_evid(eh);
 		flags = ct_event_get_flags(eh);
 
 		ap = v8plus_obj(
-		    VP(0, STRING, nc_descr_strlookup(edp, evtype)),
-		    VP_V(1, OBJECT),
+		    VP(0, STRING, nc_descr_strlookup(dp, evtype)),
+		    VP_V(1, INL_OBJECT),
 			VP(nce_ctid, NUMBER, (double)ctid),
 			VP(nce_evid, STRNUMBER64, (uint64_t)evid),
-			VP_V(nce_flags, OBJECT),
-			    VP(INFO, BOOLEAN, (flags & CTE_INFO) != 0),
-			    VP(ACK, BOOLEAN, (flags & CTE_ACK) != 0),
-			    VP(NEG, BOOLEAN, (flags & CTE_NEG) != 0),
+			VP_V(nce_flags, INL_OBJECT),
+			    VP(info, BOOLEAN, (flags & CTE_INFO) != 0),
+			    VP(ack, BOOLEAN, (flags & CTE_ACK) != 0),
+			    VP(neg, BOOLEAN, (flags & CTE_NEG) != 0),
 			    V8PLUS_TYPE_NONE,
 			V8PLUS_TYPE_NONE,
 		    V8PLUS_TYPE_NONE);
+
+		if (ap == NULL) {
+			ct_event_free(eh);
+			continue;
+		}
 
 		if (evtype == CT_EV_NEGEND &&
 		    nvlist_lookup_nvlist(ap, "0", &sap) == 0) {
