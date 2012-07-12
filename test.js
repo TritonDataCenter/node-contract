@@ -1,4 +1,4 @@
-var contract = require('./lib/contract.js');
+var contract = require('illumos_contract');
 var util = require('util');
 var child_process = require('child_process');
 

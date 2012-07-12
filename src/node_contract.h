@@ -6,7 +6,7 @@
 #include <libcontract.h>
 #include <libnvpair.h>
 #include <uv.h>
-#include "v8plus/v8plus_glue.h"
+#include "v8plus_glue.h"
 
 #ifdef	__cplusplus
 extern "C" {

@@ -2,7 +2,7 @@
 # Copyright (c) 2012 Joyent, Inc.  All rights reserved.
 #
 
-V8PLUS =	./v8plus
+V8PLUS =	../node_modules/v8plus
 
 include $(V8PLUS)/Makefile.v8plus.defs
 

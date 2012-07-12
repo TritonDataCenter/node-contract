@@ -1,6 +1,6 @@
 {
 	"author": "Keith M Wesolowski <keith.wesolowski@joyent.com>",
-	"name": "contract",
+	"name": "illumos_contract",
 	"description": "contract(4) bindings",
 	"version": "0.0.1",
 	"repository": {
@@ -10,18 +10,18 @@
 	"bugs": {
 		"url" : "http://github.com/wesolows/node-contract/issues"
 	},
-	"main": "lib/contract.js",
+	"main": "lib/index.js",
 	"engines": {
 		"node": "~0.8.1"
 	},
 	"dependencies": {
-		"posix-getopt": "~0.0.1"
+		"v8plus": "~0.0.1"
 	},
 	"devDependencies": {
 		"tap": "~0.2"
 	},
 	"scripts": {
-		"pretest": "which gjslint; if [[ \"$?\" = 0 ]] ; then  gjslint --nojsdoc -r lib -r tst; else echo \"Missing gjslint. Skipping lint\"; fi",
+		"postinstall": "gmake",
 		"test": "./node_modules/.bin/tap ./tst"
 	}
 }
