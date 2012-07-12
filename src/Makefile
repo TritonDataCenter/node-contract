@@ -15,7 +15,6 @@ SRCS =	\
 
 ERRNO_JSON =	errno.json
 
-PREFIX_NODE =	/opt/local
 CC =		/opt/local/bin/gcc
 CXX =		/opt/local/bin/g++
 

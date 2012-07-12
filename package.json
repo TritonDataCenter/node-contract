@@ -15,11 +15,12 @@
 		"node": "~0.8.1"
 	},
 	"dependencies": {
-		"v8plus": "~0.0.1"
+		"v8plus": "~0.0.2"
 	},
 	"devDependencies": {
 		"tap": "~0.2"
 	},
+	"os": [ "solaris" ],
 	"scripts": {
 		"postinstall": "gmake",
 		"test": "./node_modules/.bin/tap ./tst"
