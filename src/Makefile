@@ -2,7 +2,8 @@
 # Copyright (c) 2012 Joyent, Inc.  All rights reserved.
 #
 
-V8PLUS :=       $(shell $(PREFIX_NODE)/bin/node -e 'require("v8plus");')
+PREFIX_NODE :=	$(shell dirname `bash -c 'hash node; hash -t node'`)
+V8PLUS :=       $(shell $(PREFIX_NODE)/../bin/node -e 'require("v8plus");')
 
 include $(V8PLUS)/Makefile.v8plus.defs
 
