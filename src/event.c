@@ -31,6 +31,7 @@ handle_events(int fd)
 	ctid_t newct;
 	uint_t flags;
 	nvlist_t *ap, *sap, *rp;
+	const char *evtypename;
 	int err;
 
 	while ((err = ct_event_read(fd, &eh)) == 0) {
@@ -53,12 +54,14 @@ handle_events(int fd)
 		dp = cp->nc_type->nct_events;
 
 		evtype = ct_event_get_type(eh);
+		evtypename = nc_descr_strlookup(dp, evtype);
 		evid = ct_event_get_evid(eh);
 		flags = ct_event_get_flags(eh);
 
 		sap = v8plus_obj(
 			VP(ctid, NUMBER, (double)ctid),
 			VP(evid, STRNUMBER64, (uint64_t)evid),
+			VP(type, STRING, evtypename),
 			VP_V(flags, INL_OBJECT),
 			    VP(info, BOOLEAN, (flags & CTE_INFO) != 0),
 			    VP(ack, BOOLEAN, (flags & CTE_ACK) != 0),
@@ -88,7 +91,7 @@ handle_events(int fd)
 		}
 
 		ap = v8plus_obj(
-		    VP(0, STRING, nc_descr_strlookup(dp, evtype)),
+		    VP(0, STRING, evtypename),
 		    VP(1, OBJECT, sap),
 		    V8PLUS_TYPE_NONE);
 
