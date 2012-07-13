@@ -51,7 +51,6 @@ all: rebuild
 .PHONY: rebuild
 rebuild:
 	(cd src && $(MAKE))
-	$(NPM) rebuild
 
 .PHONY: test
 test: $(TAP)
