@@ -15,7 +15,7 @@
 		"node": "~0.8.1"
 	},
 	"dependencies": {
-		"v8plus": "~0.0.2"
+		"v8plus": "~0.0.3"
 	},
 	"devDependencies": {
 		"tap": "~0.2"
