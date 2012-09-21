@@ -17,7 +17,6 @@
 #
 # Tools
 #
-NPM		:= npm
 TAP		:= ./node_modules/.bin/tap
 
 #
@@ -36,7 +35,7 @@ CLEAN_FILES	+= \
 		src/v8plus_errno.c \
 		src/v8plus_errno.h \
 		src/mapfile_node
-		
+
 JSL_CONF_NODE	 = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
 JSSTYLE_FILES	 = $(JS_FILES)

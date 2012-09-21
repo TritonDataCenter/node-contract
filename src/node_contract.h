@@ -41,6 +41,8 @@ typedef struct node_contract {
 	int nc_st_fd;
 	int nc_ev_fd;
 	uv_poll_t nc_uv_poll;
+	struct node_contract *nc_next;
+	uint_t nc_refcnt;
 } node_contract_t;
 
 typedef struct contract_mgr {
@@ -59,8 +61,8 @@ extern const nc_descr_t *nc_ev_flags;
 extern const char *nc_descr_strlookup(const nc_descr_t *, uint_t);
 extern uint_t nc_descr_ilookup(const nc_descr_t *, const char *);
 extern node_contract_t *nc_lookup(ctid_t);
-extern int nc_add(ctid_t, node_contract_t *);
-extern void nc_del(const node_contract_t *);
+extern void nc_add(node_contract_t *);
+extern void nc_del(node_contract_t *);
 extern void handle_events(int);
 
 #ifdef	__cplusplus

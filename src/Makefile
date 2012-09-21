@@ -19,6 +19,6 @@ ERRNO_JSON =	errno.json
 CC =		/opt/local/bin/gcc
 CXX =		/opt/local/bin/g++
 
-LIBS +=		-lcontract
+LIBS +=		-lcontract -lumem
 
 include $(V8PLUS)/Makefile.v8plus.targ

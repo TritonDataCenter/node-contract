@@ -35,6 +35,8 @@ static contract_mgr_t mgr = {
 	cm_ev_fds: { -1, -1 }
 };
 
+static uint_t leaked;
+
 const char *
 nc_descr_strlookup(const nc_descr_t *dp, uint_t v)
 {
@@ -88,8 +90,10 @@ node_contract_event_cb(uv_poll_t *upp, int status __UNUSED, int events)
 }
 
 static void
-node_contract_free(node_contract_t *cp)
+node_contract_shutdown(node_contract_t *cp)
 {
+	nc_del(cp);
+
 	if (cp->nc_ctl_fd != -1)
 		(void) close(cp->nc_ctl_fd);
 	if (cp->nc_st_fd != -1)
@@ -98,7 +102,12 @@ node_contract_free(node_contract_t *cp)
 		uv_poll_stop(&cp->nc_uv_poll);
 		(void) close(cp->nc_ev_fd);
 	}
+}
 
+static void
+node_contract_free(node_contract_t *cp)
+{
+	node_contract_shutdown(cp);
 	free(cp);
 }
 
@@ -166,8 +175,6 @@ node_contract_ctor_post(node_contract_t *cp)
 			return (-1);
 		}
 	}
-
-	nc_add(cp->nc_id, cp);
 
 	return (0);
 }
@@ -373,7 +380,10 @@ node_contract_dtor(void *op)
 {
 	node_contract_t *cp = op;
 
-	node_contract_free(cp);
+	if (cp->nc_refcnt != 0)
+		++leaked;
+
+	free(cp);
 }
 
 static int
@@ -717,8 +727,6 @@ node_contract_abandon(void *op, const nvlist_t *ap __UNUSED)
 		return (v8plus_syserr(err, "failed to abandon contract: %s",
 		    strerror(err)));
 	}
-
-	nc_del(cp);
 
 	return (v8plus_void());
 }
@@ -1113,6 +1121,32 @@ node_contract_status(void *op, const nvlist_t *ap)
 	return (rp);
 }
 
+static nvlist_t *
+node_contract_hold(void *op, const nvlist_t *ap __UNUSED)
+{
+	node_contract_t *cp = op;
+
+	if (++cp->nc_refcnt == 1) {
+		nc_add(cp);
+		v8plus_obj_hold(cp);
+	}
+
+	return (v8plus_void());
+}
+
+static nvlist_t *
+node_contract_rele(void *op, const nvlist_t *ap __UNUSED)
+{
+	node_contract_t *cp = op;
+
+	if (--cp->nc_refcnt == 0) {
+		node_contract_shutdown(cp);
+		v8plus_obj_rele(cp);
+	}
+
+	return (v8plus_void());
+}
+
 /*
  * libcontract constant lookup tables
  */
@@ -1212,6 +1246,14 @@ const v8plus_method_descr_t v8plus_methods[] = {
 	{
 		md_name: "_ack",
 		md_c_func: node_contract_ack
+	},
+	{
+		md_name: "_rele",
+		md_c_func: node_contract_rele
+	},
+	{
+		md_name: "_hold",
+		md_c_func: node_contract_hold
 	},
 	{
 		md_name: "_nack",

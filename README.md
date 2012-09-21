@@ -118,8 +118,18 @@ objects with one boolean property per flag.
 
 ### Contract.abandon()
 
-Abandon the contract and attempt to free all resources associated with it.
-This is analogous to, and uses, `ct_ctl_abandon(3contract)`.
+Abandon the contract.  This is analogous to, and uses,
+`ct_ctl_abandon(3contract)`.  Note that although the contract is abandoned,
+resources associated with the contract object are not released, and events
+may still be received for this contract.
+
+### Contract.dispose()
+
+Free resources associated with the contract.  When this call returns,
+all file descriptors associated with the contract will be closed, no
+further events will be generated on this contract, and the contract will
+be eligible for garbage collection once it is no longer referenced by
+consumers.
 
 ### Contract.ack([String] evid)
 
@@ -148,14 +158,16 @@ when passing event sets within template and status objects.
 A contract that has been broken, whether as part of a negotiated transition
 or because of a fatal asynchronous event, becomes invalid.  It is the
 responsibility of the listener(s) to ensure that it can subsequently be
-cleaned up by removing all event listeners.  Similarly, a contract that has
-been abandoned, even if destroyed by the system, cannot be garbage collected
-by the Node.js runtime until the consumer removes all event listeners and
-discards all its references to that Contract object.  The effect of invoking
-methods other than those to remove event listeners is undefined for
-`Contract` objects that have been abandoned or for which all listeners have
-been notified of a fatal event.  There is no explicit mechanism to discard
-the native `ContractBinding` object itself.
+cleaned up by a call to `dispose()`.  Similarly, a contract that has been
+abandoned, even if destroyed by the system, cannot be garbage collected by
+the Node.js runtime until the consumer calls `dispose()` and discards all
+its references to that Contract object.  The effect of invoking methods
+other than those to remove event listeners is undefined for `Contract`
+objects that have been `dispose()`d.  The effect of invoking methods other
+than `dispose()` and those that remove event listeners is undefined for
+`Contract` objects for which all listeners have been notified of a fatal
+event.  There is no explicit mechanism to discard the native
+`ContractBinding` object itself.
 
 ## Implementation Notes
 
