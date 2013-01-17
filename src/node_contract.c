@@ -20,7 +20,6 @@
 #include <limits.h>
 #include <alloca.h>
 #include <libcontract.h>
-#include <libcontract_priv.h>
 #include "node_contract.h"
 
 typedef enum nc_ack {
