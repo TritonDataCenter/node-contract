@@ -2,7 +2,7 @@
 	"author": "Keith M Wesolowski <keith.wesolowski@joyent.com>",
 	"name": "illumos_contract",
 	"description": "contract(4) bindings",
-	"version": "0.0.10",
+	"version": "0.0.11",
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/wesolows/node-contract.git"
@@ -22,7 +22,7 @@
 	},
 	"os": [ "solaris", "sunos" ],
 	"scripts": {
-		"postinstall": "gmake $(eval echo ${MAKE_OVERRIDES})",
+		"postinstall": "gmake $(eval echo ${MAKE_OVERRIDES}) binding",
 		"test": "./node_modules/.bin/tap ./tst"
 	}
 }

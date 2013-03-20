@@ -17,6 +17,7 @@
 #
 # Tools
 #
+NPM		?= npm
 TAP		:= ./node_modules/.bin/tap
 
 #
@@ -45,11 +46,16 @@ JSSTYLE_FLAGS    = -o indent=tab,doxygen,unparenthesized-return=1
 # Repo-specific targets
 #
 .PHONY: all
-all: rebuild
+all: deps
+	$(NPM) --unsafe-perm install
 
-.PHONY: rebuild
-rebuild:
-	(cd src && $(MAKE))
+.PHONY: deps
+deps:
+	$(NPM) --unsafe-perm --no-rebuild install
+
+.PHONY: binding
+binding:
+	cd src && $(MAKE)
 
 .PHONY: test
 test: $(TAP)

@@ -1,5 +1,12 @@
+lib/contract_binding.node
 node_modules
 src/contracts.o
 src/event.o
+src/mapfile_node
 src/node_contract.o
+src/v8plus_csup.o
+src/v8plus_errno.c
 src/v8plus_errno.h
+src/v8plus_errno.o
+src/v8plus_objectwrap.o
+src/v8plus_subr.o
