@@ -5,10 +5,10 @@
 	"version": "0.1.0",
 	"repository": {
 		"type": "git",
-		"url": "git://github.com/wesolows/node-contract.git"
+		"url": "git://github.com/joyent/node-contract.git"
 	},
 	"bugs": {
-		"url" : "http://github.com/wesolows/node-contract/issues"
+		"url" : "http://github.com/joyent/node-contract/issues"
 	},
 	"main": "lib/index.js",
 	"engines": {
