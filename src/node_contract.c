@@ -14,6 +14,7 @@
 #include <libnvpair.h>
 #include <uv.h>
 #include <pthread.h>
+#include <signal.h>
 #include <strings.h>
 #include <errno.h>
 #include <unistd.h>
@@ -808,6 +809,33 @@ node_contract_qack(void *op, const nvlist_t *ap)
 	return (node_contract_ack_common(op, ap, NCA_QACK));
 }
 
+static nvlist_t *
+node_contract_sigsend(void *op, const nvlist_t *ap)
+{
+	node_contract_t *cp = op;
+	double dsigno;
+	char errbuf[64];
+
+	if (cp->nc_type->nct_type != NCT_PROCESS)
+		return (v8plus_error(V8PLUSERR_BADARG,
+		    "not a process contract"));
+
+	if (v8plus_args(ap, V8PLUS_ARG_F_NOEXTRA,
+	    V8PLUS_TYPE_NUMBER, &dsigno, V8PLUS_TYPE_NONE) != 0)
+		return (NULL);
+
+	if (sigsend(P_CTID, cp->nc_id, (int)dsigno) != 0) {
+		(void) snprintf(errbuf, sizeof (errbuf),
+		    "sigsend: %s", strerror(errno));
+		return (v8plus_obj(V8PLUS_TYPE_INL_OBJECT, "err",
+		    V8PLUS_TYPE_NUMBER, "errno", (double)errno,
+		    V8PLUS_TYPE_STRING, "message", errbuf,
+		    V8PLUS_TYPE_NONE, V8PLUS_TYPE_NONE));
+	}
+
+	return (v8plus_void());
+}
+
 #define	VP(_n, _t, _v) \
 	V8PLUS_TYPE_##_t, #_n, (_v)
 
@@ -1261,6 +1289,10 @@ const v8plus_method_descr_t v8plus_methods[] = {
 	{
 		md_name: "_qack",
 		md_c_func: node_contract_qack
+	},
+	{
+		md_name: "_sigsend",
+		md_c_func: node_contract_sigsend
 	},
 	{
 		md_name: "_status",
