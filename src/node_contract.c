@@ -145,8 +145,9 @@ node_contract_ctor_common(int sfd)
 			cp->nc_type = ntp;
 	}
 	if (cp->nc_type == NULL) {
-		(void) v8plus_error(V8PLUSERR_BADCTTYPE,
-		    "unknown contract type %s", typename);
+		(void) v8plus_throw_exception("Error", "unknown contract type",
+		    V8PLUS_TYPE_STRING, "contract_type", typename,
+		    V8PLUS_TYPE_NONE);
 		node_contract_free(cp);
 		return (NULL);
 	}
@@ -187,8 +188,9 @@ node_contract_ctor_latest(void **cpp)
 	int sfd;
 
 	if (mgr.cm_last_type == NULL) {
-		return (v8plus_error(V8PLUSERR_NOTEMPLATE,
-		    "no contract template has been activated"));
+		return (v8plus_throw_exception("Error",
+		    "no contract template has been activated",
+		    V8PLUS_TYPE_NONE));
 	}
 
 	(void) snprintf(spath, sizeof (spath), "%s/latest",
@@ -696,8 +698,9 @@ node_contract_create(const nvlist_t *ap __UNUSED)
 	ctid_t ctid;
 
 	if (mgr.cm_tmpl_fd < 0) {
-		return (v8plus_error(V8PLUSERR_NOTEMPLATE,
-		    "no contract template has been activated"));
+		return (v8plus_throw_exception("Error",
+		    "no contract template has been activated",
+		    V8PLUS_TYPE_NONE));
 	}
 
 	if ((err = ct_tmpl_create(mgr.cm_tmpl_fd, &ctid)) != 0) {
@@ -719,8 +722,9 @@ node_contract_abandon(void *op, const nvlist_t *ap __UNUSED)
 	int err;
 
 	if (cp->nc_ctl_fd < 0) {
-		return (v8plus_error(V8PLUSERR_BADF,
-		    "this contract has no control descriptor"));
+		return (v8plus_throw_exception("Error",
+		    "this contract has no control descriptor",
+		    V8PLUS_TYPE_NONE));
 	}
 
 	if ((err = ct_ctl_abandon(cp->nc_ctl_fd)) != 0) {
@@ -765,8 +769,9 @@ node_contract_ack_common(void *op, const nvlist_t *ap, nc_ack_t ack)
 	}
 
 	if (cp->nc_ctl_fd < 0) {
-		return (v8plus_error(V8PLUSERR_BADF,
-		    "this contract has no control descriptor"));
+		return (v8plus_throw_exception("Error",
+		    "this contract has no control descriptor",
+		    V8PLUS_TYPE_NONE));
 	}
 
 	switch (ack) {
@@ -827,10 +832,8 @@ node_contract_sigsend(void *op, const nvlist_t *ap)
 	if (sigsend(P_CTID, cp->nc_id, (int)dsigno) != 0) {
 		(void) snprintf(errbuf, sizeof (errbuf),
 		    "sigsend: %s", strerror(errno));
-		return (v8plus_obj(V8PLUS_TYPE_INL_OBJECT, "err",
-		    V8PLUS_TYPE_NUMBER, "errno", (double)errno,
-		    V8PLUS_TYPE_STRING, "message", errbuf,
-		    V8PLUS_TYPE_NONE, V8PLUS_TYPE_NONE));
+		return (v8plus_throw_errno_exception(errno, "sigsend", NULL,
+		    NULL, V8PLUS_TYPE_NONE));
 	}
 
 	return (v8plus_void());
@@ -1032,8 +1035,10 @@ nc_status_to_nvlist(ct_stathdl_t st)
 			break;
 	}
 	if (ntp == NULL) {
-		return (v8plus_error(V8PLUSERR_BADCTTYPE,
-		    "unknown contract type '%s'", typename));
+		return (v8plus_throw_exception("Error",
+		    "unknown contract type",
+		    V8PLUS_TYPE_STRING, "contract_type", typename,
+		    V8PLUS_TYPE_NONE));
 	}
 
 	inf = ct_status_get_informative(st);

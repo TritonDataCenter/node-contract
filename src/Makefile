@@ -14,8 +14,6 @@ SRCS =	\
 		event.c \
 		node_contract.c
 
-ERRNO_JSON =	errno.json
-
 CC =		/opt/local/bin/gcc
 CXX =		/opt/local/bin/g++
 STD_DEFS +=	-D__EXTENSIONS__
